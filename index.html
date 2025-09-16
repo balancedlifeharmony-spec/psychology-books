@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PsycheLens — Human Psychology Playbook</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0f172a">
+  <style>
+    :root{
+      --bg:#0b1220; --panel:#0f172a; --muted:#94a3b8; --card:#111827;
+      --ring:#3b82f6; --text:#e5e7eb; --brand:#22d3ee; --ok:#10b981; --warn:#f59e0b;
+      --chip:#1f2937; --chip2:#0ea5e9;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(145deg,#0b1220 0%,#0c1a2b 50%,#09111f 100%);
+         color:var(--text);font:16px/1.45 Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    .wrap{max-width:1100px;margin:auto;padding:16px}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .title{display:flex;gap:12px;align-items:center}
+    .logo{width:42px;height:42px;border-radius:12px;
+      background:linear-gradient(135deg,#22d3ee 0%,#3b82f6 100%); display:grid;place-items:center;
+      box-shadow:0 8px 30px rgba(34,211,238,.25)}
+    .logo b{font-weight:900;color:#0b1220}
+    .tagline{color:var(--muted);font-size:14px}
+    .bar{display:flex;gap:8px;flex:1;min-width:280px}
+    input,select,button,textarea{
+      background:#0f172a;color:var(--text);border:1px solid #1f2937;border-radius:12px;
+      padding:12px 14px;outline:none;transition:.2s; width:100%;
+    }
+    input:focus,select:focus,textarea:focus{border-color:var(--ring); box-shadow:0 0 0 3px rgba(59,130,246,.25)}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px;margin-top:14px}
+    .card{grid-column:span 12;background:var(--panel);border:1px solid #1f2937;border-radius:16px;
+      padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    @media(min-width:760px){ .card{grid-column:span 6} }
+    @media(min-width:1024px){ .card{grid-column:span 4} }
+    .book{display:flex;gap:14px}
+    .spine{width:8px;border-radius:6px;background:linear-gradient(180deg,var(--chip2),#6366f1)}
+    .book h3{margin:0 0 6px 0;font-size:18px}
+    .by{color:var(--muted);font-size:12px;margin-bottom:8px}
+    .badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+    .chip{font-size:11px;padding:6px 8px;background:var(--chip);border:1px solid #243244;border-radius:999px;color:#cbd5e1}
+    .chip.goal{background:#062b33;border-color:#0b5160;color:#8be9ff}
+    .chip.cat{background:#1b2434}
+    .actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+    .btn{cursor:pointer;display:inline-flex;gap:8px;align-items:center;justify-content:center;
+      padding:10px 12px;border-radius:12px;background:#111827;border:1px solid #1f2937}
+    .btn.primary{background:linear-gradient(135deg,#22d3ee,#3b82f6);color:#06121a;border:none}
+    .mute{color:var(--muted);font-size:13px}
+    .footer{color:#94a3b8;font-size:12px;margin:18px 0 40px}
+    .pillbox{display:flex;gap:6px;flex-wrap:wrap}
+    .pill{cursor:pointer;padding:8px 10px;border-radius:999px;background:#0f172a;border:1px solid #1f2937}
+    .pill.active{background:#071d2a;border-color:#0ea5e9;box-shadow:0 0 0 2px rgba(14,165,233,.3) inset}
+    .hl{color:#93c5fd}
+    dialog{max-width:720px;width:clamp(320px,92vw,720px);background:#0b1424;border:1px solid #1e293b;border-radius:16px}
+    dialog::backdrop{background:rgba(3,7,18,.6);backdrop-filter:blur(4px)}
+    .dialog-body{padding:18px}
+    .kbd{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background:#0b1220;
+      border:1px solid #223047;border-radius:6px;padding:2px 6px;color:#cbd5e1}
+    .sr{position:absolute;left:-9999px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <div class="logo" aria-hidden="true"><b>Ψ</b></div>
+        <div>
+          <h1 style="margin:0">PsycheLens</h1>
+          <div class="tagline">A tiny app that distills 20 classics of human psychology.</div>
+        </div>
+      </div>
+      <div class="bar">
+        <input id="q" placeholder="Search ideas, authors, laws… (e.g., 'bias', 'motivation', 'power')" />
+        <select id="cat">
+          <option value="">All themes</option>
+        </select>
+      </div>
+      <button class="btn" id="planBtn" title="Build a tailored reading plan">📚 Build Plan</button>
+    </header>
+
+    <section id="quick" style="margin-top:14px">
+      <div class="pillbox" id="quickGoals"></div>
+    </section>
+
+    <section class="grid" id="grid" aria-live="polite"></section>
+
+    <p class="footer">
+      Sources: short, original summaries derived from the books shown in your image. Use this as a study aid; read the books for depth. 
+      <span class="mute">Install (⋮ &rarr; “Add to Home Screen”) for offline use.</span>
+    </p>
+  </div>
+
+  <!-- Details dialog -->
+  <dialog id="detail">
+    <div class="dialog-body">
+      <button class="btn" onclick="detail.close()">✖ Close</button>
+      <div id="detailBody" style="margin-top:12px"></div>
+    </div>
+  </dialog>
+
+<script>
+/* --------- Data: 20 Books ---------- */
+const APP_NAME = "PsycheLens";
+const THEMES = [
+  "Behavior & Bias", "Decision-Making", "Persuasion", "Motivation",
+  "Mindset & Learning", "Resilience & Meaning", "Power & Strategy",
+  "Neuroscience & Biology", "Evolutionary Psych", "Relationships", "Life Lessons"
+];
+
+const BOOKS = [
+  {
+    t:"Predictably Irrational", a:"Dan Ariely", y:2008,
+    themes:["Behavior & Bias","Decision-Making"],
+    take:"Hidden, systematic quirks (anchors, relativity, free) drive choices; awareness lets you design better defaults.",
+    ideas:["Price anchors","Zero-price effect","Social vs market norms","The power of expectations"]
+  },
+  {
+    t:"Thinking, Fast and Slow", a:"Daniel Kahneman", y:2011,
+    themes:["Decision-Making","Behavior & Bias"],
+    take:"Two systems govern thought: fast/automatic vs slow/effortful. Bias arises when System 1 goes unchecked.",
+    ideas:["Loss aversion","Base-rate neglect","Availability","Overconfidence","Prospect theory"]
+  },
+  {
+    t:"The Art of Thinking Clearly", a:"Rolf Dobelli", y:2013,
+    themes:["Behavior & Bias","Decision-Making"],
+    take:"Short notes on common errors of judgment and how to sidestep them in daily life.",
+    ideas:["Survivorship bias","Sunk cost","Halo effect","Outcome bias"]
+  },
+  {
+    t:"Influence", a:"Robert Cialdini", y:1984,
+    themes:["Persuasion","Relationships"],
+    take:"Six core levers steer compliance—use ethically and defend against them.",
+    ideas:["Reciprocity","Commitment/consistency","Social proof","Authority","Liking","Scarcity"]
+  },
+  {
+    t:"Drive", a:"Daniel H. Pink", y:2009,
+    themes:["Motivation","Mindset & Learning"],
+    take:"For complex work, carrot-and-stick fails; people thrive on autonomy, mastery, and purpose.",
+    ideas:["AMP model","Type I vs Type X","Goldilocks tasks","Flow triggers"]
+  },
+  {
+    t:"Behave", a:"Robert Sapolsky", y:2017,
+    themes:["Neuroscience & Biology","Relationships"],
+    take:"Behavior is a timescale stack—from immediate neurochemistry to culture and evolution.",
+    ideas:["Hormones & context","Frontal cortex control","Culture shapes biology","Nature–nurture braid"]
+  },
+  {
+    t:"The Red Queen", a:"Matt Ridley", y:1993,
+    themes:["Evolutionary Psych"],
+    take:"Sexual selection and evolutionary arms races explain many human preferences and social games.",
+    ideas:["Mate choice signals","Runaway selection","Arms races"]
+  },
+  {
+    t:"The Laws of Human Nature", a:"Robert Greene", y:2018,
+    themes:["Power & Strategy","Relationships"],
+    take:"Timeless patterns—envy, narcissism, conformity—can be read and redirected with self-mastery.",
+    ideas:["Reading emotions","Reframing envy","Shadow work","Charisma as attention control"]
+  },
+  {
+    t:"Mindset", a:"Carol Dweck", y:2006,
+    themes:["Mindset & Learning","Motivation"],
+    take:"Belief in malleability (growth) changes effort, resilience, and outcomes.",
+    ideas:["Yet framing","Process praise","Neuroplasticity signaling"]
+  },
+  {
+    t:"Flow", a:"Mihaly Csikszentmihalyi", y:1990,
+    themes:["Motivation","Mindset & Learning"],
+    take:"Optimal experience arises when challenge meets skill with clear goals and feedback.",
+    ideas:["Challenge–skill balance","Deep focus","Autotelic personality"]
+  },
+  {
+    t:"Man’s Search for Meaning", a:"Viktor Frankl", y:1946,
+    themes:["Resilience & Meaning","Life Lessons"],
+    take:"Humans endure by finding meaning in work, love, and suffering—between stimulus and response lies freedom.",
+    ideas:["Logotherapy","Purpose over pleasure","Responsibility"]
+  },
+  {
+    t:"The Happiest Man on Earth", a:"Eddie Jaku", y:2020,
+    themes:["Resilience & Meaning","Life Lessons"],
+    take:"Gratitude and kindness as deliberate choices—even after unimaginable trauma.",
+    ideas:["Choose hope","Friendship as survival","Daily gratitude"]
+  },
+  {
+    t:"Think Again", a:"Adam Grant", y:2021,
+    themes:["Mindset & Learning","Decision-Making"],
+    take:"Rethinking is a skill—update opinions like scientists, not preachers or prosecutors.",
+    ideas:["Confident humility","Micro-experiments","Rethinking loops"]
+  },
+  {
+    t:"Originals", a:"Adam Grant", y:2016,
+    themes:["Mindset & Learning","Power & Strategy"],
+    take:"Non-conformists champion ideas by timing, allies, and strategic doubt.",
+    ideas:["Idea selection","Strategic procrastination","Coalitions"]
+  },
+  {
+    t:"Emotional Intelligence", a:"Daniel Goleman", y:1995,
+    themes:["Relationships","Mindset & Learning"],
+    take:"Self-awareness, self-management, empathy, and social skill predict success beyond IQ.",
+    ideas:["Name-to-tame","Emotion coaching","Social radar"]
+  },
+  {
+    t:"The Big Questions of Life", a:"Om Swami", y:2020,
+    themes:["Resilience & Meaning","Life Lessons"],
+    take:"Practical spiritual reflections on purpose, peace, and ethical living.",
+    ideas:["Inner stillness","Values-first decisions"]
+  },
+  {
+    t:"Tuesdays with Morrie", a:"Mitch Albom", y:1997,
+    themes:["Life Lessons","Relationships"],
+    take:"Simple, humane lessons on love, work, and dying well from weekly conversations.",
+    ideas:["Presence over productivity","Forgiveness","Community"]
+  },
+  {
+    t:"Outliers", a:"Malcolm Gladwell", y:2008,
+    themes:["Mindset & Learning"],
+    take:"Success is contextual—opportunity, culture, timing, and sustained practice matter.",
+    ideas:["10,000-hour heuristic","Cultural legacies","Birth-month effects"]
+  },
+  {
+    t:"The 48 Laws of Power", a:"Robert Greene", y:1998,
+    themes:["Power & Strategy","Relationships"],
+    take:"Cold-eyed rules of power dynamics—use responsibly and defend against them.",
+    ideas:["Never outshine the master","Court attention","Control options"]
+  },
+  {
+    t:"Games People Play", a:"Eric Berne", y:1964,
+    themes:["Relationships","Behavior & Bias"],
+    take:"Transactional Analysis reveals hidden ‘games’ driving dysfunctional interactions.",
+    ideas:["Parent–Adult–Child states","Payoffs","Strokes & scripts"]
+  }
+];
+
+/* --------- UI Setup ---------- */
+const catSel = document.getElementById('cat');
+THEMES.forEach(t => { const o=document.createElement('option'); o.value=t; o.textContent=t; catSel.appendChild(o); });
+
+const GOALS = [
+  {k:"better-decisions", label:"Better decisions", match:["Decision-Making","Behavior & Bias"]},
+  {k:"persuasion", label:"Ethical persuasion", match:["Persuasion","Power & Strategy"]},
+  {k:"motivation", label:"Motivation & focus", match:["Motivation","Mindset & Learning"]},
+  {k:"resilience", label:"Resilience & meaning", match:["Resilience & Meaning"]},
+  {k:"relationships", label:"Relationships", match:["Relationships"]},
+  {k:"human-nature", label:"Human nature (deep dive)", match:["Neuroscience & Biology","Evolutionary Psych","Power & Strategy"]}
+];
+const quick = document.getElementById('quickGoals');
+GOALS.forEach(g=>{
+  const b=document.createElement('button'); b.className='pill'; b.textContent=g.label; b.onclick=()=>{
+    document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+    b.classList.add('active'); catSel.value=""; document.getElementById('q').value="";
+    render(filterByThemes(g.match));
+  }; quick.appendChild(b);
+});
+
+function filterByThemes(list){ return BOOKS.filter(b=>b.themes.some(t=>list.includes(t))); }
+
+/* --------- Render ---------- */
+const grid = document.getElementById('grid');
+function render(items){
+  grid.innerHTML='';
+  if(!items.length){ grid.innerHTML = `<div class="card"><span class="mute">No results. Try “bias”, “power”, “meaning”, or pick a theme.</span></div>`; return; }
+  for(const b of items){
+    const el=document.createElement('article'); el.className='card'; el.innerHTML=`
+      <div class="book">
+        <div class="spine" aria-hidden="true"></div>
+        <div>
+          <h3>${b.t}</h3>
+          <div class="by">by ${b.a} · <span class="mute">${b.y}</span></div>
+          <p>${b.take}</p>
+          <div class="badges">${b.themes.map(t=>`<span class="chip cat">${t}</span>`).join('')}</div>
+          <div class="actions">
+            <button class="btn primary" data-title="${b.t}">Key ideas</button>
+            <button class="btn" data-add="${b.t}">Add to plan</button>
+          </div>
+        </div>
+      </div>`;
+    grid.appendChild(el);
+  }
+  // bind buttons
+  grid.querySelectorAll('[data-title]').forEach(btn=>btn.onclick=()=>openDetails(btn.dataset.title));
+  grid.querySelectorAll('[data-add]').forEach(btn=>btn.onclick=()=>addToPlan(btn.dataset.add));
+}
+
+function openDetails(title){
+  const b = BOOKS.find(x=>x.t===title);
+  const html = `
+    <h2 style="margin:.3rem 0">${b.t}</h2>
+    <div class="mute" style="margin-bottom:10px">by ${b.a} · ${b.y}</div>
+    <div class="badges">${b.themes.map(t=>`<span class="chip">${t}</span>`).join('')}</div>
+    <h3>Key ideas</h3>
+    <ul>${b.ideas.map(i=>`<li>${i}</li>`).join('')}</ul>
+    <p class="mute">Tip: press <span class="kbd">A</span> to add this to your plan.</p>
+  `;
+  document.getElementById('detailBody').innerHTML = html;
+  detail.showModal();
+  currentDetail = b.t;
+}
+
+let currentDetail = null;
+
+/* --------- Search & Filter ---------- */
+const input = document.getElementById('q');
+function doFilter(){
+  const term = input.value.trim().toLowerCase();
+  const cat = catSel.value;
+  const res = BOOKS.filter(b=>{
+    const matchesTerm = !term || [b.t,b.a,b.take,...b.ideas,...b.themes].join(' ').toLowerCase().includes(term);
+    const matchesCat = !cat || b.themes.includes(cat);
+    return matchesTerm && matchesCat;
+  });
+  render(res);
+}
+input.addEventListener('input', doFilter);
+catSel.addEventListener('change', doFilter);
+
+/* --------- Reading Plan ---------- */
+const planKey = APP_NAME + "::plan";
+const planBtn = document.getElementById('planBtn');
+planBtn.onclick = () => showPlanDialog();
+
+function addToPlan(title){
+  const plan = new Set(JSON.parse(localStorage.getItem(planKey) || "[]"));
+  plan.add(title);
+  localStorage.setItem(planKey, JSON.stringify([...plan]));
+  toast(`Added “${title}” to your plan.`);
+}
+
+function suggestPlanByThemes(themes, limit=6){
+  const pool = filterByThemes(themes);
+  const seen = new Set(JSON.parse(localStorage.getItem(planKey) || "[]"));
+  return pool
+    .sort((a,b)=>a.y-b.y)      // older → newer (foundational first)
+    .filter(b=>!seen.has(b.t)) // skip already added
+    .slice(0,limit)
+    .map(b=>b.t);
+}
+
+function showPlanDialog(){
+  const dialog = document.createElement('dialog');
+  dialog.innerHTML = `
+    <div class="dialog-body">
+      <button class="btn" onclick="this.closest('dialog').close()">✖ Close</button>
+      <h2 style="margin:.6rem 0">Build a Reading Plan</h2>
+      <p class="mute">Pick a goal or create a custom list. We’ll order from foundation → application.</p>
+      <div class="pillbox" id="goalBox" style="margin-bottom:10px"></div>
+      <div id="planBox"></div>
+      <div class="actions">
+        <button class="btn primary" id="savePlan">Save plan</button>
+        <button class="btn" id="exportPlan">Export (.txt)</button>
+        <button class="btn" id="clearPlan">Clear</button>
+      </div>
+    </div>`;
+  document.body.appendChild(dialog);
+  const goalBox = dialog.querySelector('#goalBox');
+  GOALS.forEach(g=>{
+    const b=document.createElement('button'); b.className='pill'; b.textContent=g.label;
+    b.onclick=()=>{
+      dialog.querySelectorAll('.pill').forEach(p=>p.classList.remove('active')); b.classList.add('active');
+      const picks = suggestPlanByThemes(g.match, 6);
+      dialog.querySelector('#planBox').innerHTML = renderPlanList(picks);
+    };
+    goalBox.appendChild(b);
+  });
+  const existing = JSON.parse(localStorage.getItem(planKey) || "[]");
+  dialog.querySelector('#planBox').innerHTML = renderPlanList(existing);
+  dialog.showModal();
+
+  dialog.querySelector('#savePlan').onclick = ()=> {
+    const list = [...dialog.querySelectorAll('[data-item]')].map(li=>li.dataset.item);
+    localStorage.setItem(planKey, JSON.stringify(list));
+    toast("Plan saved.");
+  };
+  dialog.querySelector('#clearPlan').onclick = ()=>{ localStorage.removeItem(planKey); dialog.close(); toast("Plan cleared."); };
+  dialog.querySelector('#exportPlan').onclick = ()=> {
+    const list = [...dialog.querySelectorAll('[data-item]')].map(li=>li.dataset.item);
+    const text = `Reading Plan — ${APP_NAME}\n\n` + list.map((t,i)=>`${i+1}. ${t}`).join("\n");
+    const blob = new Blob([text], {type:"text/plain"}); const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download='reading-plan.txt'; a.click(); URL.revokeObjectURL(url);
+  };
+
+  function renderPlanList(list){
+    if(!list.length) return `<p class="mute">No books yet. Choose a goal above or add books from cards with “Add to plan”.</p>`;
+    return `<ol style="padding-left:18px">${list.map(t=>`<li data-item="${t}">${t}</li>`).join('')}</ol>`;
+  }
+}
+
+/* --------- Keyboard: quick add from details ---------- */
+document.addEventListener('keydown', e=>{
+  if(e.key.toLowerCase()==='a' && currentDetail){ addToPlan(currentDetail); }
+});
+
+/* --------- Tiny toast ---------- */
+function toast(msg){
+  const el = document.createElement('div');
+  el.textContent = msg; el.style.cssText = `
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+    background:#0ea5e9;color:#031522;padding:10px 14px;border-radius:12px;box-shadow:0 14px 40px rgba(14,165,233,.35);z-index:9999`;
+  document.body.appendChild(el); setTimeout(()=>el.remove(),1800);
+}
+
+/* --------- PWA boot ---------- */
+if('serviceWorker' in navigator){ window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js')); }
+
+/* --------- Initial render ---------- */
+render(BOOKS);
+</script>
+</body>
+</html>
